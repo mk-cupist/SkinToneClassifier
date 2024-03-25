@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Union
 from urllib.parse import urlparse
 
-from stone.package import __version__, __package_name__, __description__, __app_name__
+from package import __version__, __package_name__, __description__, __app_name__
 
 LOG = logging.getLogger(__name__)
 

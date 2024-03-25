@@ -13,9 +13,9 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from typing import List
 
-from stone.api import process
-from stone.image import normalize_palette
-from stone.utils import (
+from api import process
+from image import normalize_palette
+from utils import (
     build_arguments,
     build_image_paths,
     is_windows,
@@ -23,7 +23,7 @@ from stone.utils import (
     is_debugging,
     resolve_labels,
 )
-from stone.package import (
+from package import (
     __app_name__,
     __version__,
     __description__,
@@ -35,6 +35,8 @@ from stone.package import (
     __issues__,
     __package_name__,
 )
+
+setattr(np, "asscalar", lambda x: np.asarray(x).item())
 
 LOG = logging.getLogger(__name__)
 lock = threading.Lock()
@@ -230,7 +232,7 @@ if not use_cli and "--ignore-gooey" not in sys.argv:
         from gooey import Gooey
     except ImportError:
         # If gooey is not installed, use a dummy decorator
-        from stone.utils import Gooey
+        from utils import Gooey
 
     from importlib.resources import files
 

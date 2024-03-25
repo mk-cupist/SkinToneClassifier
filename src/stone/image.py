@@ -12,7 +12,7 @@ from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import sRGBColor, LabColor
 
-from stone.utils import is_url, extract_filename_and_extension, alphabet_id, ArgumentError
+from utils import is_url, extract_filename_and_extension, alphabet_id, ArgumentError
 
 LOG = logging.getLogger(__name__)
 
@@ -184,6 +184,7 @@ def detect_faces(
         minSize=minSize,
         flags=flags,
     )
+    print("Detected number of faces: ", len(faces))
     if len(faces) == 0:
         return []
     # Change the format of faces from (x, y, w, h) to (x, y, x+w, y+h)
@@ -208,7 +209,9 @@ def is_face(face_coord, image, is_bw, threshold=0.3):
     skin_pixels = cv2.countNonZero(skin_mask)
     total_pixels = face_image.shape[0] * face_image.shape[1]
     skin_ratio = skin_pixels / total_pixels
-    return skin_ratio >= threshold
+    result = skin_ratio >= threshold
+    print("is_face result: ", result)
+    return result
 
 
 def mask_face(image, face):

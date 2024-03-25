@@ -4,7 +4,7 @@ from typing import Union, Literal
 
 import cv2
 
-from stone.image import (
+from image import (
     load_image,
     is_black_white,
     DEFAULT_TONE_PALETTE,
@@ -12,7 +12,7 @@ from stone.image import (
     process_image,
     normalize_palette,
 )
-from stone.utils import ArgumentError
+from utils import ArgumentError
 
 LOG = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ def process(
             "filename": basename,
             "message": msg,
         }
+    print("Process image: ", filename_or_url)
 
     is_bw = is_black_white(image)
     decoded_image_type = image_type
