@@ -231,23 +231,26 @@ def detect_skin_in_bw(image):
 
 
 def detect_skin_in_color(image):
-    # Converting from BGR Colors Space to HSV
-    img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    img_HSV = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    #skin color range for hsv color space 
+    HSV_mask = cv2.inRange(img_HSV, (0, 15, 0), (17,170,255)) 
+    HSV_mask = cv2.morphologyEx(HSV_mask, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
 
-    # Defining skin Thresholds
-    low_hsv = np.array([0, 48, 80], dtype=np.uint8)
-    high_hsv = np.array([20, 255, 255], dtype=np.uint8)
+    #converting from gbr to YCbCr color space
+    img_YCrCb = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
+    #skin color range for hsv color space 
+    YCrCb_mask = cv2.inRange(img_YCrCb, (0, 135, 85), (255,180,135)) 
+    YCrCb_mask = cv2.morphologyEx(YCrCb_mask, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
 
-    skin_mask = cv2.inRange(img, low_hsv, high_hsv)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
-    skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
-    skin_mask = cv2.GaussianBlur(skin_mask, ksize=(3, 3), sigmaX=0)
+    #merge skin detection (YCbCr and hsv)
+    global_mask=cv2.bitwise_and(YCrCb_mask,HSV_mask)
+    global_mask=cv2.medianBlur(global_mask,3)
+    global_mask = cv2.morphologyEx(global_mask, cv2.MORPH_OPEN, np.ones((4,4), np.uint8))
 
-    skin = cv2.bitwise_and(image, image, mask=skin_mask)
+    skin = cv2.bitwise_and(image, image, mask=global_mask)
 
     all_0 = np.isclose(skin, 0).all()
-    return image if all_0 else skin, skin_mask
+    return image if all_0 else skin, global_mask
 
 
 def draw_rects(image, *rects, color=(255, 0, 0), thickness=2):
