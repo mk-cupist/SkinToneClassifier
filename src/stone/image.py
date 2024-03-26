@@ -1,3 +1,4 @@
+import os
 import functools
 import logging
 import math
@@ -13,6 +14,11 @@ from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import sRGBColor, LabColor
 
 from utils import is_url, extract_filename_and_extension, alphabet_id, ArgumentError
+
+directory = os.path.dirname(__file__)
+weights = os.path.join(directory, "./face_detection_yunet_2023mar.onnx")
+
+face_detector = cv2.FaceDetectorYN_create(weights, "", (0, 0))
 
 LOG = logging.getLogger(__name__)
 
@@ -161,35 +167,26 @@ def resize(image, width: int = -1, height: int = -1):
 
     return cv2.resize(image, (width, height))
 
+def detect_faces(image):
+    channels = 1 if len(image.shape) == 2 else image.shape[2]
+    if channels == 1:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    if channels == 4:
+        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    
 
-def detect_faces(
-    image,
-    scaleFactor=1.1,
-    minNeighbors=5,
-    minSize=(30, 30),
-    biggest_only=True,
-    is_bw=False,
-    threshold=0.3,
-):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
+    height, width, _ = image.shape
+    face_detector.setInputSize((width, height))
 
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    _, faces = face_detector.detect(image)
+    faces = faces if faces is not None else []
 
-    flags = (cv2.CASCADE_SCALE_IMAGE | cv2.CASCADE_FIND_BIGGEST_OBJECT) if biggest_only else cv2.CASCADE_SCALE_IMAGE
-    faces = cascade.detectMultiScale(
-        gray,
-        scaleFactor=scaleFactor,
-        minNeighbors=minNeighbors,
-        minSize=minSize,
-        flags=flags,
-    )
-    print("Detected number of faces: ", len(faces))
-    if len(faces) == 0:
-        return []
-    # Change the format of faces from (x, y, w, h) to (x, y, x+w, y+h)
-    faces[:, 2:] += faces[:, :2]
-    return [face for face in faces if is_face(face, image, is_bw, threshold)]
+    output = []
+    for face in faces:
+        box = list(map(int, face[:4]))
+        output.append([box[0], box[1], box[0]+box[2], box[1]+box[3]])
+
+    return output
 
 
 def is_face(face_coord, image, is_bw, threshold=0.3):
@@ -219,6 +216,8 @@ def mask_face(image, face):
     mask = np.zeros(image.shape[:2], dtype=np.uint8)
     mask[y1:y2, x1:x2] = 255  # Fill with white color
     image = cv2.bitwise_and(image, image, mask=mask)
+    cv2.imwrite("../tmp/image.jpg", image)
+
     return image
 
 
@@ -334,6 +333,7 @@ def classify(
     """
     detect_skin_fn = detect_skin_in_bw if is_bw else detect_skin_in_color
     skin, skin_mask = detect_skin_fn(image)
+    cv2.imwrite("../tmp/skin.jpg", skin_mask)
     dmnt_colors, dmnt_pcts = dominant_colors(skin, to_bw, n_dominant_colors)
     # Generate readable strings
     hex_colors = ["#%02X%02X%02X" % tuple(np.around([r, g, b]).astype(int)) for b, g, r in dmnt_colors]
@@ -388,13 +388,16 @@ def create_dominant_color_bar(report_image, dmnt_colors, dmnt_pcts, bar_width):
     color_bars = []
     total_height = 0
     for color, pct in zip(dmnt_colors, dmnt_pcts):
+        print(color, pct)
         bar_height = int(math.floor(report_image.shape[0] * pct))
         total_height += bar_height
         bar = create_color_bar(bar_height, bar_width, color)
         color_bars.append(bar)
     padding_height = report_image.shape[0] - total_height
+    print(report_image.shape[0], total_height, padding_height)
     if padding_height > 0:
-        padding = create_color_bar(padding_height, bar_width, (255, 255, 255))
+        print("PADDDIIIINGGGG!!!", padding_height)
+        padding = create_color_bar(padding_height, bar_width, (0, 0, 0))
         color_bars.append(padding)
     return np.vstack(color_bars)
 
@@ -482,10 +485,10 @@ def process_image(
     threshold=0.3,
     verbose=False,
 ):
-    image = resize(image, new_width)
+    image = resize(image, 512)
 
     records, report_images = [], {}
-    face_coords = detect_faces(image, scaleFactor, minNeighbors, minSize, biggest_only, is_bw, threshold)
+    face_coords = detect_faces(image)
     n_faces = len(face_coords)
 
     if n_faces == 0:
