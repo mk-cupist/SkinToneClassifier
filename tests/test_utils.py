@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from stone.utils import build_image_paths, resolve_labels
+from utils import build_image_paths, resolve_labels
 
 
 class TestUtils(unittest.TestCase):
